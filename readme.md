@@ -33,11 +33,13 @@ python-project/
 │   │   ├── __init__.py
 │   │   ├── nlp_service.py             # NLTK text preprocessing
 │   │   ├── classification_service.py  # Local AI classification
-│   │   └── response_service.py        # Remote AI response generation
+│   │   ├── response_service.py        # Remote AI response generation
+│   │   └── training_service.py        # Feedback analytics & training data
 │   └── routes/
 │       ├── __init__.py
 │       └── email_routes.py            # API endpoints
-├── templates/                         # (Future frontend)
+├── templates/
+│   └── index.html                     # Web frontend (single-page UI)
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
@@ -140,20 +142,70 @@ flask run
 
 **POST** `/api/emails/<email_id>/feedback`
 
+Accepts two independent types of feedback in a single call (both can be sent together):
+
 ```json
+// Response quality feedback
 {
   "feedback": "helpful",
   "response_id": "550e8400-e29b-41d4-a716-446655440001"
 }
+
+// Classification correction (user overrides AI label)
+{
+  "corrected_category": "Produtivo",
+  "feedback_comment": "Optional explanation"
+}
 ```
 
-Feedback values: `helpful`, `not_helpful`
+Feedback values: `helpful`, `not_helpful`  
+Category values: `Produtivo`, `Improdutivo`
 
-### 5. Health Check
+### 5. Upload Email File
+
+**POST** `/api/emails/upload`
+
+Accepts `multipart/form-data`:
+- `file`: `.txt` or `.pdf` (max 5 MB)
+- `assunto` *(optional)*: email subject
+
+Returns the same structure as `/api/emails/processar`.
+
+### 6. Training Statistics
+
+**GET** `/api/emails/training/stats`
+
+```json
+// Response
+{
+  "stats": {
+    "total_classified": 120,
+    "total_corrected": 8,
+    "accuracy": 0.9333,
+    "corrections_by_direction": {
+      "Produtivo → Improdutivo": 5,
+      "Improdutivo → Produtivo": 3
+    }
+  },
+  "fine_tuning_readiness": "need_more_data (have 8, need 50)",
+  "recommended_approach": "..."
+}
+```
+
+### 7. Export Training Data
+
+**GET** `/api/emails/training/export`
+
+Query parameters:
+- `only_corrected=true` — export only human-corrected examples
+
+Returns a JSONL file (`training_data.jsonl`) ready for Hugging Face `Trainer` or any standard fine-tuning pipeline.
+
+### 8. Health Check
 
 **GET** `/health`
 
-### 6. API Information
+### 9. API Information
 
 **GET** `/`
 
@@ -236,6 +288,8 @@ API_PORT=5000
 | category | VARCHAR(50) | Produtivo / Improdutivo |
 | confidence | FLOAT | 0.0–1.0 |
 | model_used | VARCHAR(255) | e.g. facebook/bart-large-mnli |
+| corrected_category | VARCHAR(50) | Human override (nullable) |
+| feedback_comment | TEXT | Optional correction note (nullable) |
 
 ### suggested_responses
 | Column | Type | Description |

@@ -11,6 +11,23 @@ A REST API for classifying emails and generating AI-powered responses, deployed 
 ### NLP Preprocessing (src/services/nlp_service.py)
 - NLTK-based text cleaning: lowercase, URL/email removal, tokenization, stop word removal, lemmatization
 
+### Training Service (src/services/training_service.py)
+- Computes accuracy metrics from stored human corrections
+- Exports labeled training pairs as JSONL ready for `transformers.Trainer`
+- **Feedback cache**: checks if an identical email was already corrected by a user and applies the override during classification, skipping the AI model
+- **Fine-tuning readiness**: reports `ready` once 50+ human-corrected examples are available
+
+### Web Frontend (templates/index.html)
+- Single-page interface for the full classification workflow
+- Dual input: direct text entry or file upload (.txt / .pdf)
+- Displays classification badge, confidence bar, and AI-generated response
+- **Feedback panel**: thumbs-up / thumbs-down on the suggested response (changeable)
+- **Correction panel**: lets the user override the AI's category with optional comment
+- **Training stats card**: shows total classified, corrections, estimated accuracy, and readiness badge
+- Export buttons for full and corrections-only JSONL training data
+- Email history with filter (All / Produtivo / Improdutivo) and pagination
+- Detail overlay modal with feedback and correction controls per email
+
 ### Email Classification (src/services/classification_service.py)
 - **Model**: `facebook/bart-large-mnli` (runs locally inside Docker)
 - Zero-shot classification into Produtivo / Improdutivo
@@ -26,16 +43,19 @@ A REST API for classifying emails and generating AI-powered responses, deployed 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | POST | `/api/emails/processar` | Classify email & generate response |
+| POST | `/api/emails/upload` | Process email from .txt/.pdf file |
 | GET | `/api/emails` | List emails (pagination & filtering) |
 | GET | `/api/emails/<id>` | Get email details |
-| POST | `/api/emails/<id>/feedback` | Submit feedback |
+| POST | `/api/emails/<id>/feedback` | Submit response feedback and/or classification correction |
+| GET | `/api/emails/training/stats` | Model accuracy metrics |
+| GET | `/api/emails/training/export` | Export JSONL training data |
 | GET | `/health` | Health check |
 | GET | `/` | API information |
 
 ### Database (MySQL 8.0)
 - **Email** — stores email subject, content, sender
-- **Classification** — category, confidence, model used
-- **SuggestedResponse** — generated response text, feedback tracking
+- **Classification** — category, confidence, model used; `corrected_category` and `feedback_comment` for human corrections
+- **SuggestedResponse** — generated response text, feedback tracking (`user_feedback`)
 
 ---
 
@@ -54,10 +74,17 @@ src/
 │   ├── __init__.py
 │   ├── nlp_service.py             # NLTK text preprocessing
 │   ├── classification_service.py  # BART zero-shot classification (local)
-│   └── response_service.py        # Qwen response generation (HF API)
+│   ├── response_service.py        # Qwen response generation (HF API)
+│   └── training_service.py        # Feedback analytics & training data
 └── routes/
     ├── __init__.py
     └── email_routes.py            # REST API endpoints
+```
+
+### Frontend
+```
+templates/
+└── index.html                     # Single-page web UI
 ```
 
 ### Infrastructure
@@ -148,8 +175,8 @@ Server:          Gunicorn 21.2.0
 
 ---
 
-**Implementation Date**: March 12, 2026
-**Backend Version**: 1.0.0
+**Implementation Date**: March 14, 2026
+**Backend Version**: 1.1.0
 **Status**: ✅ Ready for Development/Testing
 
 For detailed information on specific components, refer to the appropriate documentation file.

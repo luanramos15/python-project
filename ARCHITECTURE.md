@@ -27,9 +27,12 @@ The system uses Flask, NLTK for NLP preprocessing, persists data in MySQL, and r
 │  ┌──────────────────────────────────────────────────────┐      │
 │  │              API Routes (email_routes.py)            │      │
 │  │  ├─ POST   /api/emails/processar                    │      │
+│  │  ├─ POST   /api/emails/upload                       │      │
 │  │  ├─ GET    /api/emails                              │      │
 │  │  ├─ GET    /api/emails/<id>                         │      │
-│  │  └─ POST   /api/emails/<id>/feedback                │      │
+│  │  ├─ POST   /api/emails/<id>/feedback                │      │
+│  │  ├─ GET    /api/emails/training/stats               │      │
+│  │  └─ GET    /api/emails/training/export              │      │
 │  └──────────────────┬───────────────────────────────────┘      │
 │                     │                                           │
 │        ┌────────────┴──────────────┐                           │
@@ -57,6 +60,17 @@ The system uses Flask, NLTK for NLP preprocessing, persists data in MySQL, and r
 │                              │   fallback      │              │
 │                              └────────┬────────┘              │
 │                                       │                        │
+│                              ┌────────▼────────┐              │
+│                              │Training Service │              │
+│                              │(training_       │              │
+│                              │ service.py)     │              │
+│                              │                 │              │
+│                              │ • Feedback stats│              │
+│                              │ • JSONL export  │              │
+│                              │ • Correction    │              │
+│                              │   cache lookup  │              │
+│                              └────────┬────────┘              │
+│                                       │                        │
 │        ┌──────────────────────────────┘                        │
 │        ▼                                                       │
 │  ┌──────────────────────────────────────────────┐             │
@@ -78,7 +92,8 @@ The system uses Flask, NLTK for NLP preprocessing, persists data in MySQL, and r
 │                                                                 │
 │  Tables:                                                        │
 │  ├─ emails (id, subject, content, sender, dates)               │
-│  ├─ classifications (id, email_id, category, confidence)       │
+│  ├─ classifications (id, email_id, category, confidence,       │
+│  │                   corrected_category, feedback_comment)      │
 │  └─ suggested_responses (id, email_id, response, feedback)     │
 │                                                                 │
 │  Indexes: PRIMARY KEY, FOREIGN KEY, category, confidence       │
@@ -170,21 +185,22 @@ python-project/
 │   │   ├── __init__.py
 │   │   ├── nlp_service.py             # NLTK text preprocessing
 │   │   ├── classification_service.py  # Local AI classification
-│   │   └── response_service.py        # Remote AI response generation
+│   │   ├── response_service.py        # Remote AI response generation
+│   │   └── training_service.py        # Feedback analytics & training data
 │   │
 │   └── routes/
 │       ├── __init__.py
 │       └── email_routes.py    # API endpoints
 │
-├── templates/                 # (Future) Frontend HTML
+├── templates/
+│   └── index.html             # Single-page web frontend
 │
 ├── test_api.py                # API integration tests
 ├── validate_structure.py      # Project structure validator
 │
-├── README-BACKEND.md          # Backend API documentation
 ├── ARCHITECTURE.md            # This file
 ├── IMPLEMENTATION-SUMMARY.md  # Implementation summary
-└── readme.md                  # Original challenge description
+└── readme.md                  # API documentation
 ```
 
 ## 🔧 Component Details
@@ -215,6 +231,8 @@ email_id: UUID (Foreign Key)
 category: VARCHAR(50)  # "Produtivo" or "Improdutivo"
 confidence: FLOAT (0.0-1.0)
 model_used: VARCHAR(255)
+corrected_category: VARCHAR(50)  # Human override (nullable)
+feedback_comment: TEXT           # Optional correction note (nullable)
 created_at: DATETIME
 updated_at: DATETIME
 ```
@@ -285,15 +303,34 @@ classificar_com_detalhes(text, subject)  # Detailed with scores
 
 **Auth**: Requires `HUGGINGFACE_API_TOKEN` environment variable (free tier)
 
-### 6. API Routes (src/routes/email_routes.py)
+### 6. Training Service (src/services/training_service.py)
+**Purpose**: Manage feedback-derived training data and model accuracy analytics
+
+**Methods**:
+```python
+get_feedback_stats()                        # Accuracy metrics from corrections
+get_training_pairs(only_corrected=False)    # Labeled pairs for fine-tuning
+export_as_jsonl(only_corrected=False)       # JSONL string for Trainer
+find_correction_for_email(subject, content) # Feedback cache lookup
+fine_tuning_summary()                       # Readiness report
+```
+
+**Feedback cache**: When processing a new email, the route layer checks if an identical email was previously corrected by a human. If found, the human label is applied directly (confidence=1.0, model=`human_correction`).
+
+**Fine-tuning threshold**: 50 human-corrected examples triggers `ready` readiness status.
+
+### 7. API Routes (src/routes/email_routes.py)
 **Endpoints**:
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | POST | `/api/emails/processar` | Classify email & generate response |
+| POST | `/api/emails/upload` | Process email from .txt/.pdf file |
 | GET | `/api/emails` | List all processed emails |
 | GET | `/api/emails/<id>` | Get email details |
-| POST | `/api/emails/<id>/feedback` | Submit feedback |
+| POST | `/api/emails/<id>/feedback` | Submit response feedback and/or classification correction |
+| GET | `/api/emails/training/stats` | Model accuracy metrics |
+| GET | `/api/emails/training/export` | Export labeled JSONL training data |
 | GET | `/health` | Health check |
 | GET | `/` | API info |
 
