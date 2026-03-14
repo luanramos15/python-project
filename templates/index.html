@@ -293,6 +293,41 @@
     .filter-btn.active[data-filter="Produtivo"] { background: var(--green); color: #fff; border-color: var(--green); }
     .filter-btn.active[data-filter="Improdutivo"] { background: var(--red); color: #fff; border-color: var(--red); }
 
+    /* ---------- Pagination ---------- */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .4rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .page-btn {
+      min-width: 34px;
+      height: 34px;
+      padding: 0 .6rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 500;
+      transition: .15s;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .page-info {
+      font-size: .8rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: .5rem;
+    }
+
     /* ---------- Error ---------- */
     .error-msg {
       background: #fef2f2;
@@ -470,6 +505,8 @@
       <button class="filter-btn" data-filter="Improdutivo">❌ Improdutivos</button>
     </div>
     <ul class="history-list" id="history"></ul>
+    <div class="pagination" id="pagination"></div>
+    <p class="page-info" id="page-info"></p>
   </div>
 </main>
 
@@ -609,12 +646,15 @@
 
   // --- History filter ---
   let activeFilter = '';
+  let currentPage = 1;
+  const PER_PAGE = 10;
 
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeFilter = btn.dataset.filter;
+      currentPage = 1;
       loadHistory();
     });
   });
@@ -622,7 +662,8 @@
   // --- History ---
   async function loadHistory() {
     try {
-      const url = '/api/emails?per_page=20' + (activeFilter ? '&categoria=' + encodeURIComponent(activeFilter) : '');
+      let url = `/api/emails?page=${currentPage}&per_page=${PER_PAGE}`;
+      if (activeFilter) url += '&categoria=' + encodeURIComponent(activeFilter);
       const res = await fetch(url);
       const data = await res.json();
       const list = document.getElementById('history');
@@ -632,6 +673,8 @@
           ? `Nenhum email <strong>${activeFilter.toLowerCase()}</strong> encontrado.`
           : 'Nenhum email processado ainda.';
         list.innerHTML = `<li class="empty-state">${msg}</li>`;
+        document.getElementById('pagination').innerHTML = '';
+        document.getElementById('page-info').textContent = '';
         return;
       }
 
@@ -646,10 +689,52 @@
           <span class="date">${date}</span>
         </li>`;
       }).join('');
+
+      renderPagination(data.current_page, data.pages, data.total);
     } catch (err) {
       document.getElementById('history').innerHTML =
         '<li class="empty-state">Não foi possível carregar o histórico.</li>';
+      document.getElementById('pagination').innerHTML = '';
+      document.getElementById('page-info').textContent = '';
     }
+  }
+
+  function renderPagination(page, totalPages, total) {
+    const container = document.getElementById('pagination');
+    const info = document.getElementById('page-info');
+
+    if (totalPages <= 1) {
+      container.innerHTML = '';
+      info.textContent = `${total} registro${total !== 1 ? 's' : ''}`;
+      return;
+    }
+
+    const buttons = [];
+
+    // Prev
+    buttons.push(`<button class="page-btn" onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>&#8592;</button>`);
+
+    // Page numbers: always show first, last, current ±1, and ellipsis
+    const pages = new Set([1, totalPages, page, page - 1, page + 1].filter(p => p >= 1 && p <= totalPages));
+    const sorted = [...pages].sort((a, b) => a - b);
+
+    let prev = 0;
+    for (const p of sorted) {
+      if (prev && p - prev > 1) buttons.push(`<span style="color:var(--muted);font-size:.85rem;padding:0 .2rem">…</span>`);
+      buttons.push(`<button class="page-btn ${p === page ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`);
+      prev = p;
+    }
+
+    // Next
+    buttons.push(`<button class="page-btn" onclick="goToPage(${page + 1})" ${page === totalPages ? 'disabled' : ''}>&#8594;</button>`);
+
+    container.innerHTML = buttons.join('');
+    info.textContent = `Página ${page} de ${totalPages} · ${total} registro${total !== 1 ? 's' : ''}`;
+  }
+
+  function goToPage(page) {
+    currentPage = page;
+    loadHistory();
   }
 
   // --- Detail overlay ---
