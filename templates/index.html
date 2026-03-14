@@ -423,6 +423,51 @@
       text-decoration: underline;
       padding: 0;
     }
+
+    /* ---------- Correction ---------- */
+    .correction-section {
+      margin-top: 1.2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .correction-btns { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: .6rem; }
+    .correction-btn {
+      padding: .5rem 1.2rem;
+      border-radius: 6px;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      font-size: .88rem;
+      font-weight: 600;
+      transition: .15s;
+    }
+    .correction-btn[data-cat="Produtivo"].selected,
+    .correction-btn[data-cat="Produtivo"]:hover { background: #dcfce7; border-color: var(--green); color: #166534; }
+    .correction-btn[data-cat="Improdutivo"].selected,
+    .correction-btn[data-cat="Improdutivo"]:hover { background: #fee2e2; border-color: var(--red); color: #991b1b; }
+    .correction-comment {
+      width: 100%; padding: .5rem .7rem; border: 1px solid var(--border);
+      border-radius: 6px; font-size: .88rem; font-family: inherit;
+      margin-bottom: .5rem; resize: none;
+    }
+    .correction-comment:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+    .correction-result { font-size: .88rem; color: var(--muted); display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+
+    /* ---------- Stats panel ---------- */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .stat-box { background: var(--bg); border-radius: 8px; padding: 1rem; text-align: center; }
+    .stat-box .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--accent); line-height: 1; margin-bottom: .3rem; }
+    .stat-box .stat-label { font-size: .78rem; color: var(--muted); }
+    .readiness-badge { display: inline-block; padding: .3rem .8rem; border-radius: 20px; font-size: .82rem; font-weight: 600; margin-bottom: 1rem; }
+    .readiness-badge.ready { background: #dcfce7; color: #166534; }
+    .readiness-badge.not-ready { background: #fef9c3; color: #854d0e; }
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: .5rem; padding: .55rem 1.4rem;
+      border: 2px solid var(--accent); color: var(--accent); background: none;
+      border-radius: 6px; font-size: .88rem; font-weight: 500; cursor: pointer;
+      text-decoration: none; transition: .15s;
+    }
+    .btn-outline:hover { background: var(--accent); color: #fff; }
   </style>
 </head>
 <body>
@@ -493,6 +538,14 @@
       <span id="res-model-class"></span>
       <span id="res-model-resp"></span>
       <span id="res-time"></span>
+    </div>
+  </div>
+
+  <!-- Stats card -->
+  <div class="card">
+    <h2>📈 Estatísticas de Treinamento</h2>
+    <div id="stats-content">
+      <p class="feedback-question">Carregando…</p>
     </div>
   </div>
 
@@ -748,6 +801,7 @@
       const resp = respObj ? respObj.response_text : '—';
       const respId = respObj ? respObj.id : null;
       const existingFeedback = respObj ? respObj.user_feedback : null;
+      const existingCorrection = d.classificacao ? d.classificacao.corrected_category : null;
       const cls = cat.toLowerCase();
 
       document.getElementById('detail-content').innerHTML = `
@@ -761,10 +815,12 @@
         </div>
         <label style="margin-top:1rem;">Resposta Sugerida</label>
         <div class="response-box">${esc(resp)}</div>
+        ${buildCorrectionHTML(cat, existingCorrection)}
         ${respId ? buildFeedbackHTML(existingFeedback) : ''}
       `;
 
       if (respId) attachFeedbackListeners(id, respId);
+      attachCorrectionListeners(id, cat);
       document.getElementById('detail-overlay').classList.add('open');
     } catch (err) {
       showError('Não foi possível carregar os detalhes.');
@@ -851,8 +907,126 @@
     return d.innerHTML;
   }
 
-  // Load history on page load
+  // --- Correction section ---
+  function buildCorrectionHTML(currentCat, existingCorrection) {
+    if (existingCorrection) {
+      const icon = existingCorrection === 'Produtivo' ? '✅' : '❌';
+      return `<div class='correction-section'>
+        <label>🏷️ Correção de Classificação</label>
+        <div class='correction-result'>
+          Corrigido para: <strong>${icon} ${existingCorrection}</strong>
+          <button class='feedback-change' id='correction-change-btn'>Alterar</button>
+        </div>
+      </div>`;
+    }
+    return `<div class='correction-section'>
+      <label>🏷️ A classificação está correta?</label>
+      <p class='feedback-question'>Se a IA errou, selecione a categoria correta:</p>
+      <div class='correction-btns'>
+        <button class='correction-btn${"Produtivo" === currentCat ? " selected" : ""}' data-cat='Produtivo'>✅ Produtivo${currentCat === 'Produtivo' ? ' ← IA' : ''}</button>
+        <button class='correction-btn${"Improdutivo" === currentCat ? " selected" : ""}' data-cat='Improdutivo'>❌ Improdutivo${currentCat === 'Improdutivo' ? ' ← IA' : ''}</button>
+      </div>
+      <div id='correction-confirm' style='display:none'>
+        <textarea class='correction-comment' id='correction-comment' rows='2' placeholder='Comentário opcional…'></textarea>
+        <button class='btn' id='send-correction-btn' style='padding:.4rem 1rem;font-size:.85rem;margin-top:.4rem'>Salvar Correção</button>
+      </div>
+    </div>`;
+  }
+
+  function attachCorrectionListeners(emailId, currentCat) {
+    const changeBtn = document.getElementById('correction-change-btn');
+    if (changeBtn) {
+      changeBtn.addEventListener('click', () => showDetail(emailId));
+      return;
+    }
+    const corrBtns = document.querySelectorAll('.correction-btn');
+    const confirmDiv = document.getElementById('correction-confirm');
+    const sendBtn = document.getElementById('send-correction-btn');
+
+    corrBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        corrBtns.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        if (confirmDiv) confirmDiv.style.display = btn.dataset.cat !== currentCat ? 'block' : 'none';
+      });
+    });
+
+    if (sendBtn) {
+      sendBtn.addEventListener('click', () => {
+        const selected = document.querySelector('.correction-btn.selected');
+        if (!selected || selected.dataset.cat === currentCat) return;
+        const comment = document.getElementById('correction-comment')?.value || '';
+        sendCorrection(emailId, selected.dataset.cat, comment.trim());
+      });
+    }
+  }
+
+  async function sendCorrection(emailId, correctedCategory, comment) {
+    const section = document.querySelector('.correction-section');
+    if (!section) return;
+    section.innerHTML = `<label>🏷️ A classificação está correta?</label><p class='feedback-question'>Salvando…</p>`;
+    try {
+      const body = { corrected_category: correctedCategory };
+      if (comment) body.feedback_comment = comment;
+      const res = await fetch('/api/emails/' + emailId + '/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error();
+      const icon = correctedCategory === 'Produtivo' ? '✅' : '❌';
+      section.innerHTML = `<label>🏷️ Correção de Classificação</label>
+        <div class='correction-result'>
+          Corrigido para: <strong>${icon} ${correctedCategory}</strong>
+          <button class='feedback-change' id='correction-change-btn'>Alterar</button>
+        </div>`;
+      document.getElementById('correction-change-btn')
+        .addEventListener('click', () => showDetail(emailId));
+      loadHistory();
+      loadStats();
+    } catch {
+      section.innerHTML = `<label>🏷️ A classificação está correta?</label>
+        <p class='feedback-question' style='color:var(--red)'>Erro ao salvar. Tente novamente.</p>`;
+    }
+  }
+
+  // --- Training stats ---
+  async function loadStats() {
+    const content = document.getElementById('stats-content');
+    if (!content) return;
+    try {
+      const res = await fetch('/api/emails/training/stats');
+      const d = await res.json();
+      const stats = d.stats || {};
+      const accuracy = stats.accuracy != null ? (stats.accuracy * 100).toFixed(1) + '%' : '—';
+      const isReady = (d.fine_tuning_readiness || '') === 'ready';
+      const dirEntries = Object.entries(stats.corrections_by_direction || {});
+      const dirHTML = dirEntries.length
+        ? dirEntries.map(([k, v]) => `<li>${esc(k)}: <strong>${v}</strong></li>`).join('')
+        : `<li style='color:var(--muted)'>Nenhuma correção registrada ainda</li>`;
+      content.innerHTML = `
+        <div class='stats-grid'>
+          <div class='stat-box'><div class='stat-value'>${stats.total_classified ?? '—'}</div><div class='stat-label'>Emails classificados</div></div>
+          <div class='stat-box'><div class='stat-value'>${stats.total_corrected ?? '—'}</div><div class='stat-label'>Correções humanas</div></div>
+          <div class='stat-box'><div class='stat-value'>${accuracy}</div><div class='stat-label'>Acurácia estimada</div></div>
+        </div>
+        <span class='readiness-badge ${isReady ? 'ready' : 'not-ready'}'>
+          ${isReady ? '✅ Pronto para fine-tuning' : '⏳ ' + esc(d.fine_tuning_readiness || '')}
+        </span>
+        <p style='font-size:.83rem;color:var(--muted);margin-bottom:.8rem'>${esc(d.recommended_approach || '')}</p>
+        <ul style='font-size:.85rem;list-style:none;margin-bottom:1rem'>${dirHTML}</ul>
+        <div style='display:flex;gap:.8rem;flex-wrap:wrap'>
+          <a class='btn-outline' href='/api/emails/training/export' download='training_data.jsonl'>⬇️ Exportar dados de treino</a>
+          <a class='btn-outline' href='/api/emails/training/export?only_corrected=true' download='corrections.jsonl'>⬇️ Apenas correções</a>
+        </div>`;
+    } catch {
+      content.innerHTML = `<p class='feedback-question' style='color:var(--red)'>Não foi possível carregar as estatísticas.</p>`;
+    }
+  }
+
+  // Load history and stats on page load
   loadHistory();
+  loadStats();
 </script>
 </body>
 </html>

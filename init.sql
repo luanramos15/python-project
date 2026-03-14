@@ -25,12 +25,15 @@ CREATE TABLE IF NOT EXISTS classifications (
     category VARCHAR(50) NOT NULL,
     confidence FLOAT NOT NULL DEFAULT 0.0,
     model_used VARCHAR(255),
+    corrected_category VARCHAR(50),
+    feedback_comment TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY idx_email_id (email_id),
     FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
     INDEX idx_category (category),
-    INDEX idx_confidence (confidence)
+    INDEX idx_confidence (confidence),
+    INDEX idx_corrected_category (corrected_category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Create suggested_responses table
@@ -56,3 +59,9 @@ ALTER TABLE emails ADD FULLTEXT INDEX idx_fulltext_emails (subject, content);
 CREATE USER IF NOT EXISTS 'email_user'@'%' IDENTIFIED BY 'email_password';
 GRANT ALL PRIVILEGES ON email_classification.* TO 'email_user'@'%';
 FLUSH PRIVILEGES;
+
+-- Migration: add feedback columns to existing classifications tables
+-- (safe to run multiple times because of IF NOT EXISTS column check)
+ALTER TABLE classifications ADD COLUMN IF NOT EXISTS corrected_category VARCHAR(50);
+ALTER TABLE classifications ADD COLUMN IF NOT EXISTS feedback_comment TEXT;
+ALTER TABLE classifications ADD INDEX IF NOT EXISTS idx_corrected_category (corrected_category);

@@ -1,8 +1,11 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 import logging
 import io
 from src.models.database import db, Email, Classification, SuggestedResponse
 from src.services import nlp_service, classification_service, response_service
+from src.services.training_service import TrainingService
+
+training_service = TrainingService()
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +43,21 @@ def processar_email():
         logger.info(f"Preprocessing email with subject: {assunto}")
         processed_text, tokens = nlp_service.preprocessar_texto(conteudo)
         
+        # Check feedback cache: if a human already corrected an identical email, honour it
+        feedback_override = training_service.find_correction_for_email(assunto, conteudo)
+
         # Classify email
         logger.info("Classifying email...")
-        classification_result = classification_service.classificar_email(conteudo, assunto)
+        if feedback_override:
+            logger.info("Using human-correction override from feedback cache")
+            classification_result = {
+                'category': feedback_override['category'],
+                'confidence': feedback_override['confidence'],
+                'scores': {},
+                'model_used': 'human_correction',
+            }
+        else:
+            classification_result = classification_service.classificar_email(conteudo, assunto)
         
         if classification_result.get('error'):
             return jsonify({
@@ -189,46 +204,109 @@ def obter_email(email_id):
 @email_bp.route('/<email_id>/feedback', methods=['POST'])
 def enviar_feedback(email_id):
     """
-    Submit feedback about the generated classification or response.
-    
-    Expected JSON payload:
-    {
-        "feedback": "helpful" | "not_helpful",
-        "response_id": "response_id (optional)"
-    }
-    
-    Returns:
-        dict: Confirmation of feedback submission
+    Submit feedback for a processed email.
+
+    Accepts two independent types of feedback in a single call:
+
+    1. Response quality feedback (was the suggested reply useful?):
+       { "feedback": "helpful" | "not_helpful", "response_id": "<uuid>" }
+
+    2. Classification correction (the AI labelled it wrong):
+       { "corrected_category": "Produtivo" | "Improdutivo",
+         "feedback_comment": "optional explanation" }
+
+    Both can be sent together.
     """
     try:
         email = Email.query.get(email_id)
-        
         if not email:
             return jsonify({'error': f"Email {email_id} not found"}), 404
-        
-        data = request.get_json()
+
+        data = request.get_json() or {}
         feedback = data.get('feedback', '').strip()
-        response_id = data.get('response_id', None)
-        
-        if not feedback:
-            return jsonify({'error': 'Feedback is required'}), 400
-        
-        # Update response feedback if specified
-        if response_id:
+        response_id = data.get('response_id')
+        corrected_category = data.get('corrected_category', '').strip()
+        feedback_comment = data.get('feedback_comment', '').strip()
+
+        if not feedback and not corrected_category:
+            return jsonify({'error': 'Provide at least one of: feedback or corrected_category'}), 400
+
+        VALID_CATEGORIES = {'Produtivo', 'Improdutivo'}
+        if corrected_category and corrected_category not in VALID_CATEGORIES:
+            return jsonify({
+                'error': f"corrected_category must be one of {sorted(VALID_CATEGORIES)}"
+            }), 400
+
+        # --- 1. Classification correction ---
+        if corrected_category and email.classifications:
+            clf = email.classifications
+            clf.corrected_category = corrected_category
+            if feedback_comment:
+                clf.feedback_comment = feedback_comment
+
+        # --- 2. Response quality feedback ---
+        if feedback and response_id:
             response = SuggestedResponse.query.get(response_id)
             if response and response.email_id == email_id:
                 response.user_feedback = feedback
-                db.session.commit()
-        
+
+        db.session.commit()
+
         return jsonify({
             'email_id': email_id,
-            'feedback': feedback,
+            'feedback': feedback or None,
+            'corrected_category': corrected_category or None,
             'message': 'Feedback registered successfully'
         }), 200
-        
+
     except Exception as e:
         logger.error(f"Error registering feedback: {e}")
         db.session.rollback()
+        return jsonify({'error': f"Server error: {str(e)}"}), 500
+
+
+# ---------------------------------------------------------------------------
+# Training / feedback-analytics routes
+# ---------------------------------------------------------------------------
+
+@email_bp.route('/training/stats', methods=['GET'])
+def training_stats():
+    """
+    Return accuracy statistics derived from user feedback.
+
+    Useful for monitoring model quality over time and deciding when to
+    trigger a fine-tuning run.
+    """
+    try:
+        summary = training_service.fine_tuning_summary()
+        return jsonify(summary), 200
+    except Exception as e:
+        logger.error(f"Error computing training stats: {e}")
+        return jsonify({'error': f"Server error: {str(e)}"}), 500
+
+
+@email_bp.route('/training/export', methods=['GET'])
+def training_export():
+    """
+    Export labeled training data as newline-delimited JSON (JSONL).
+
+    Query parameters:
+        only_corrected=true   – export only examples where users corrected
+                                the model (useful for targeted fine-tuning)
+
+    The JSONL is ready to feed into transformers Trainer or any other
+    standard fine-tuning pipeline.
+    """
+    try:
+        only_corrected = request.args.get('only_corrected', 'false').lower() == 'true'
+        jsonl = training_service.export_as_jsonl(only_corrected=only_corrected)
+        return Response(
+            jsonl,
+            mimetype='application/x-ndjson',
+            headers={'Content-Disposition': 'attachment; filename="training_data.jsonl"'}
+        )
+    except Exception as e:
+        logger.error(f"Error exporting training data: {e}")
         return jsonify({'error': f"Server error: {str(e)}"}), 500
 
 

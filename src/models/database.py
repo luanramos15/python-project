@@ -47,6 +47,9 @@ class Classification(db.Model):
     category = db.Column(db.String(50), nullable=False)  # "Produtivo" or "Improdutivo"
     confidence = db.Column(db.Float, nullable=False)  # 0.0 to 1.0
     model_used = db.Column(db.String(255), nullable=True)  # Name of the model used
+    # Feedback fields: corrected_category is set when a user overrides the AI's prediction
+    corrected_category = db.Column(db.String(50), nullable=True)
+    feedback_comment = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -60,6 +63,8 @@ class Classification(db.Model):
             'category': self.category,
             'confidence': self.confidence,
             'model_used': self.model_used,
+            'corrected_category': self.corrected_category,
+            'feedback_comment': self.feedback_comment,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
