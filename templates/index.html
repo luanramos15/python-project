@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classificação de Emails — AI</title>
+  <style>
+    :root {
+      --primary: #1a2332;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --green: #16a34a;
+      --red: #dc2626;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 10px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 1.3rem; font-weight: 600; }
+    header .badge {
+      font-size: .75rem;
+      background: rgba(255,255,255,.15);
+      padding: .25rem .7rem;
+      border-radius: 20px;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    /* ---------- Cards ---------- */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .card h2 {
+      font-size: 1.05rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    /* ---------- Tabs ---------- */
+    .tabs {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 1.25rem;
+    }
+    .tab-btn {
+      padding: .5rem 1.2rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      cursor: pointer;
+      font-size: .9rem;
+      transition: .15s;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ---------- Form ---------- */
+    label {
+      display: block;
+      font-weight: 500;
+      font-size: .85rem;
+      margin-bottom: .3rem;
+      color: var(--muted);
+    }
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: .6rem .8rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .95rem;
+      font-family: inherit;
+      margin-bottom: 1rem;
+      transition: border .15s;
+    }
+    input[type="text"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    textarea { resize: vertical; min-height: 140px; }
+
+    /* ---------- Drop zone ---------- */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: .2s;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(37,99,235,.04);
+    }
+    .dropzone p { margin: .4rem 0; }
+    .dropzone .icon { font-size: 2rem; margin-bottom: .3rem; }
+    .dropzone .file-name {
+      margin-top: .5rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .dropzone input { display: none; }
+
+    /* ---------- Button ---------- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .65rem 1.8rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: .95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: .15s;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+    .btn .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      display: none;
+    }
+    .btn.loading .spinner { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---------- Results ---------- */
+    #result { display: none; }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .category-badge {
+      padding: .35rem 1rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: .95rem;
+    }
+    .category-badge.produtivo { background: #dcfce7; color: #166534; }
+    .category-badge.improdutivo { background: #fee2e2; color: #991b1b; }
+
+    .confidence-bar {
+      flex: 1;
+      min-width: 150px;
+    }
+    .confidence-bar .bar-bg {
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .confidence-bar .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width .6s ease;
+    }
+    .confidence-bar .bar-label {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: .2rem;
+    }
+
+    .response-box {
+      background: var(--bg);
+      border-left: 4px solid var(--accent);
+      padding: 1rem 1.2rem;
+      border-radius: 0 6px 6px 0;
+      white-space: pre-wrap;
+      font-size: .93rem;
+      line-height: 1.6;
+      margin-top: 1rem;
+    }
+
+    .meta {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: .8rem;
+      font-size: .78rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+
+    /* ---------- History ---------- */
+    .history-list { list-style: none; }
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+      padding: .7rem 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: .1s;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item:hover { background: var(--bg); margin: 0 -.5rem; padding-left: .5rem; padding-right: .5rem; border-radius: 6px; }
+    .history-item .cat {
+      font-size: .7rem;
+      font-weight: 600;
+      padding: .15rem .6rem;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+    .history-item .cat.produtivo { background: #dcfce7; color: #166534; }
+    .history-item .cat.improdutivo { background: #fee2e2; color: #991b1b; }
+    .history-item .subj {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: .9rem;
+    }
+    .history-item .date { font-size: .75rem; color: var(--muted); white-space: nowrap; }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    /* ---------- Error ---------- */
+    .error-msg {
+      background: #fef2f2;
+      color: #991b1b;
+      padding: .8rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      display: none;
+      font-size: .9rem;
+    }
+
+    /* ---------- Detail modal ---------- */
+    .overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 100;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 3rem 1rem;
+      overflow-y: auto;
+    }
+    .overlay.open { display: flex; }
+    .overlay .card {
+      max-width: 700px;
+      width: 100%;
+      position: relative;
+    }
+    .close-btn {
+      position: absolute;
+      top: 1rem; right: 1rem;
+      background: none; border: none;
+      font-size: 1.3rem; cursor: pointer;
+      color: var(--muted);
+    }
+
+    @media (max-width: 600px) {
+      header { flex-direction: column; gap: .5rem; text-align: center; }
+      .result-header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📧 Classificação de Emails</h1>
+  <span class="badge">IA &bull; NLP &bull; Hugging Face</span>
+</header>
+
+<main>
+  <!-- Input card -->
+  <div class="card">
+    <h2>📝 Processar Email</h2>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="text">Texto Direto</button>
+      <button class="tab-btn" data-tab="file">Upload de Arquivo</button>
+    </div>
+
+    <div class="error-msg" id="error"></div>
+
+    <!-- Text tab -->
+    <div class="tab-panel active" id="panel-text">
+      <label for="assunto">Assunto</label>
+      <input type="text" id="assunto" placeholder="Ex: Erro no módulo de pagamentos">
+
+      <label for="conteudo">Conteúdo do email</label>
+      <textarea id="conteudo" placeholder="Cole ou digite o conteúdo do email aqui..."></textarea>
+    </div>
+
+    <!-- File tab -->
+    <div class="tab-panel" id="panel-file">
+      <label for="assunto-file">Assunto (opcional)</label>
+      <input type="text" id="assunto-file" placeholder="Será usado o nome do arquivo se vazio">
+
+      <div class="dropzone" id="dropzone">
+        <div class="icon">📄</div>
+        <p><strong>Arraste o arquivo aqui</strong></p>
+        <p>ou clique para selecionar</p>
+        <p style="font-size:.8rem; margin-top:.3rem;">Formatos aceitos: .txt, .pdf (máx. 5 MB)</p>
+        <p class="file-name" id="file-name"></p>
+        <input type="file" id="file-input" accept=".txt,.pdf">
+      </div>
+    </div>
+
+    <button class="btn" id="submit-btn" onclick="handleSubmit()">
+      <span class="spinner"></span>
+      Classificar Email
+    </button>
+  </div>
+
+  <!-- Result card -->
+  <div class="card" id="result">
+    <h2>📊 Resultado</h2>
+
+    <div class="result-header">
+      <span class="category-badge" id="res-category"></span>
+      <div class="confidence-bar">
+        <div class="bar-bg"><div class="bar-fill" id="res-bar"></div></div>
+        <div class="bar-label" id="res-confidence"></div>
+      </div>
+    </div>
+
+    <label>Resposta Sugerida</label>
+    <div class="response-box" id="res-response"></div>
+
+    <div class="meta">
+      <span id="res-model-class"></span>
+      <span id="res-model-resp"></span>
+      <span id="res-time"></span>
+    </div>
+  </div>
+
+  <!-- History card -->
+  <div class="card">
+    <h2>📋 Histórico</h2>
+    <ul class="history-list" id="history"></ul>
+  </div>
+</main>
+
+<!-- Detail overlay -->
+<div class="overlay" id="detail-overlay" onclick="if(event.target===this)closeDetail()">
+  <div class="card">
+    <button class="close-btn" onclick="closeDetail()">&times;</button>
+    <h2>📧 Detalhes do Email</h2>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<script>
+  // --- Tab switching ---
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      hideError();
+    });
+  });
+
+  // --- Drag & drop ---
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  const fileNameEl = document.getElementById('file-name');
+  let selectedFile = null;
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) pickFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) pickFile(fileInput.files[0]);
+  });
+
+  function pickFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['txt', 'pdf'].includes(ext)) {
+      showError('Formato não suportado. Use .txt ou .pdf');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showError('Arquivo muito grande. Máximo 5 MB.');
+      return;
+    }
+    selectedFile = file;
+    fileNameEl.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+    hideError();
+  }
+
+  // --- Error ---
+  function showError(msg) {
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError() {
+    document.getElementById('error').style.display = 'none';
+  }
+
+  // --- Submit ---
+  async function handleSubmit() {
+    hideError();
+    const btn = document.getElementById('submit-btn');
+    const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+    let response;
+
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    try {
+      if (activeTab === 'text') {
+        const assunto = document.getElementById('assunto').value.trim();
+        const conteudo = document.getElementById('conteudo').value.trim();
+        if (!conteudo) { showError('O conteúdo do email é obrigatório.'); return; }
+
+        response = await fetch('/api/emails/processar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assunto, conteudo })
+        });
+      } else {
+        if (!selectedFile) { showError('Selecione um arquivo .txt ou .pdf.'); return; }
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+        const assunto = document.getElementById('assunto-file').value.trim();
+        if (assunto) fd.append('assunto', assunto);
+
+        response = await fetch('/api/emails/upload', {
+          method: 'POST',
+          body: fd
+        });
+      }
+
+      const data = await response.json();
+      if (!response.ok) { showError(data.error || 'Erro ao processar email.'); return; }
+      showResult(data);
+      loadHistory();
+    } catch (err) {
+      showError('Não foi possível conectar ao servidor.');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
+  }
+
+  // --- Show result ---
+  function showResult(data) {
+    const cat = data.classificacao.categoria;
+    const conf = data.classificacao.confianca;
+    const pct = (conf * 100).toFixed(1);
+
+    document.getElementById('res-category').textContent = cat;
+    document.getElementById('res-category').className = 'category-badge ' + cat.toLowerCase();
+
+    const bar = document.getElementById('res-bar');
+    bar.style.width = '0%';
+    bar.style.background = cat === 'Produtivo' ? 'var(--green)' : 'var(--red)';
+    requestAnimationFrame(() => { bar.style.width = pct + '%'; });
+
+    document.getElementById('res-confidence').textContent = 'Confiança: ' + pct + '%';
+    document.getElementById('res-response').textContent = data.resposta_sugerida.texto;
+    document.getElementById('res-model-class').textContent = '🏷️ Classificação: ' + (data.classificacao.modelo_usado || '—');
+    document.getElementById('res-model-resp').textContent = '🤖 Resposta: ' + (data.resposta_sugerida.modelo_usado || '—');
+    document.getElementById('res-time').textContent = '🕐 ' + new Date(data.timestamp).toLocaleString('pt-BR');
+
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // --- History ---
+  async function loadHistory() {
+    try {
+      const res = await fetch('/api/emails?per_page=20');
+      const data = await res.json();
+      const list = document.getElementById('history');
+
+      if (!data.emails || data.emails.length === 0) {
+        list.innerHTML = '<li class="empty-state">Nenhum email processado ainda.</li>';
+        return;
+      }
+
+      list.innerHTML = data.emails.map(e => {
+        const cat = e.classificacao ? e.classificacao.category : '—';
+        const cls = cat.toLowerCase();
+        const subj = e.subject || '(sem assunto)';
+        const date = e.created_at ? new Date(e.created_at).toLocaleDateString('pt-BR') : '';
+        return `<li class="history-item" onclick="showDetail('${e.id}')">
+          <span class="cat ${cls}">${cat}</span>
+          <span class="subj">${esc(subj)}</span>
+          <span class="date">${date}</span>
+        </li>`;
+      }).join('');
+    } catch (err) {
+      document.getElementById('history').innerHTML =
+        '<li class="empty-state">Não foi possível carregar o histórico.</li>';
+    }
+  }
+
+  // --- Detail overlay ---
+  async function showDetail(id) {
+    try {
+      const res = await fetch('/api/emails/' + id);
+      const d = await res.json();
+      const cat = d.classificacao ? d.classificacao.category : '—';
+      const conf = d.classificacao ? (d.classificacao.confidence * 100).toFixed(1) + '%' : '—';
+      const resp = d.respostas && d.respostas.length ? d.respostas[0].response_text : '—';
+      const cls = cat.toLowerCase();
+
+      document.getElementById('detail-content').innerHTML = `
+        <p style="margin-bottom:.6rem"><strong>Assunto:</strong> ${esc(d.subject || '(sem assunto)')}</p>
+        <p style="margin-bottom:1rem; color:var(--muted); font-size:.85rem;">
+          ${esc((d.content || '').substring(0, 500))}${(d.content || '').length > 500 ? '…' : ''}
+        </p>
+        <div class="result-header">
+          <span class="category-badge ${cls}">${cat}</span>
+          <span style="font-size:.9rem; color:var(--muted);">Confiança: ${conf}</span>
+        </div>
+        <label style="margin-top:1rem;">Resposta Sugerida</label>
+        <div class="response-box">${esc(resp)}</div>
+      `;
+      document.getElementById('detail-overlay').classList.add('open');
+    } catch (err) {
+      showError('Não foi possível carregar os detalhes.');
+    }
+  }
+
+  function closeDetail() {
+    document.getElementById('detail-overlay').classList.remove('open');
+  }
+
+  // Escape HTML
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // Load history on page load
+  loadHistory();
+</script>
+</body>
+</html>

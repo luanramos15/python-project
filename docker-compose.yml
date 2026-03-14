@@ -1,0 +1,73 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: email_classification_db
+    environment:
+      MYSQL_ROOT_PASSWORD: seu_password_seguro
+      MYSQL_DATABASE: email_classification
+      MYSQL_USER: email_user
+      MYSQL_PASSWORD: email_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - email_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: email_classification_api
+    env_file:
+      - .env
+    environment:
+      FLASK_APP: src/app.py
+      FLASK_ENV: development
+      FLASK_DEBUG: 1
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_USER: email_user
+      MYSQL_PASSWORD: email_password
+      MYSQL_DATABASE: email_classification
+      SQLALCHEMY_DATABASE_URI: mysql+pymysql://email_user:email_password@db:3306/email_classification
+      HUGGINGFACE_MODEL_CLASSIFICATION: facebook/bart-large-mnli
+      HUGGINGFACE_MODEL_RESPONSE: Qwen/Qwen2.5-72B-Instruct
+      HUGGINGFACE_API_TOKEN: ${HUGGINGFACE_API_TOKEN:-}
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - pip_cache:/root/.cache/pip
+      - venv:/opt/venv
+      - hf_cache:/root/.cache/huggingface
+    networks:
+      - email_network
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python -m src.init_db &&
+            flask run --host=0.0.0.0"
+
+volumes:
+  mysql_data:
+  pip_cache:
+  venv:
+  hf_cache:
+
+networks:
+  email_network:
+    driver: bridge
