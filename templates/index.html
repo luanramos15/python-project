@@ -270,6 +270,29 @@
       font-size: .9rem;
     }
 
+    /* ---------- Filter buttons ---------- */
+    .filter-btns {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: .35rem .9rem;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--bg);
+      cursor: pointer;
+      font-size: .83rem;
+      font-weight: 500;
+      transition: .15s;
+      color: var(--text);
+    }
+    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-btn.active[data-filter=""] { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .filter-btn.active[data-filter="Produtivo"] { background: var(--green); color: #fff; border-color: var(--green); }
+    .filter-btn.active[data-filter="Improdutivo"] { background: var(--red); color: #fff; border-color: var(--red); }
+
     /* ---------- Error ---------- */
     .error-msg {
       background: #fef2f2;
@@ -309,6 +332,61 @@
     @media (max-width: 600px) {
       header { flex-direction: column; gap: .5rem; text-align: center; }
       .result-header { flex-direction: column; align-items: flex-start; }
+    }
+
+    /* ---------- Feedback ---------- */
+    .feedback-section {
+      margin-top: 1.2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .feedback-section > label {
+      display: block;
+      margin-bottom: .5rem;
+    }
+    .feedback-question {
+      font-size: .85rem;
+      color: var(--muted);
+      margin-bottom: .6rem;
+    }
+    .feedback-actions {
+      display: flex;
+      gap: .6rem;
+      flex-wrap: wrap;
+    }
+    .feedback-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .45rem 1.1rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      font-size: .88rem;
+      font-weight: 500;
+      transition: .15s;
+    }
+    .feedback-btn:hover { border-color: var(--accent); }
+    .feedback-btn.helpful:hover  { background: #dcfce7; border-color: var(--green); color: #166534; }
+    .feedback-btn.not-helpful:hover { background: #fee2e2; border-color: var(--red); color: #991b1b; }
+    .feedback-result {
+      font-size: .88rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+    .feedback-result strong { color: var(--text); }
+    .feedback-change {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: .82rem;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
     }
   </style>
 </head>
@@ -386,6 +464,11 @@
   <!-- History card -->
   <div class="card">
     <h2>📋 Histórico</h2>
+    <div class="filter-btns">
+      <button class="filter-btn active" data-filter="">Todos</button>
+      <button class="filter-btn" data-filter="Produtivo">✅ Produtivos</button>
+      <button class="filter-btn" data-filter="Improdutivo">❌ Improdutivos</button>
+    </div>
     <ul class="history-list" id="history"></ul>
   </div>
 </main>
@@ -524,15 +607,31 @@
     document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // --- History filter ---
+  let activeFilter = '';
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      loadHistory();
+    });
+  });
+
   // --- History ---
   async function loadHistory() {
     try {
-      const res = await fetch('/api/emails?per_page=20');
+      const url = '/api/emails?per_page=20' + (activeFilter ? '&categoria=' + encodeURIComponent(activeFilter) : '');
+      const res = await fetch(url);
       const data = await res.json();
       const list = document.getElementById('history');
 
       if (!data.emails || data.emails.length === 0) {
-        list.innerHTML = '<li class="empty-state">Nenhum email processado ainda.</li>';
+        const msg = activeFilter
+          ? `Nenhum email <strong>${activeFilter.toLowerCase()}</strong> encontrado.`
+          : 'Nenhum email processado ainda.';
+        list.innerHTML = `<li class="empty-state">${msg}</li>`;
         return;
       }
 
@@ -560,7 +659,10 @@
       const d = await res.json();
       const cat = d.classificacao ? d.classificacao.category : '—';
       const conf = d.classificacao ? (d.classificacao.confidence * 100).toFixed(1) + '%' : '—';
-      const resp = d.respostas && d.respostas.length ? d.respostas[0].response_text : '—';
+      const respObj = d.respostas && d.respostas.length ? d.respostas[0] : null;
+      const resp = respObj ? respObj.response_text : '—';
+      const respId = respObj ? respObj.id : null;
+      const existingFeedback = respObj ? respObj.user_feedback : null;
       const cls = cat.toLowerCase();
 
       document.getElementById('detail-content').innerHTML = `
@@ -574,11 +676,83 @@
         </div>
         <label style="margin-top:1rem;">Resposta Sugerida</label>
         <div class="response-box">${esc(resp)}</div>
+        ${respId ? buildFeedbackHTML(existingFeedback) : ''}
       `;
+
+      if (respId) attachFeedbackListeners(id, respId);
       document.getElementById('detail-overlay').classList.add('open');
     } catch (err) {
       showError('Não foi possível carregar os detalhes.');
     }
+  }
+
+  function buildFeedbackHTML(existingFeedback) {
+    let inner;
+    if (existingFeedback) {
+      const label = existingFeedback === 'helpful' ? '👍 Útil' : '👎 Não útil';
+      inner = `<div class="feedback-result">
+        Você avaliou: <strong>${label}</strong>
+        <button class="feedback-change" id="feedback-change-btn">Alterar</button>
+      </div>`;
+    } else {
+      inner = `<p class="feedback-question">A resposta sugerida foi útil?</p>
+      <div class="feedback-actions">
+        <button class="feedback-btn helpful" id="fb-helpful">👍 Útil</button>
+        <button class="feedback-btn not-helpful" id="fb-not-helpful">👎 Não útil</button>
+      </div>`;
+    }
+    return `<div class="feedback-section"><label>💬 Feedback</label>${inner}</div>`;
+  }
+
+  function attachFeedbackListeners(emailId, respId) {
+    const helpBtn    = document.getElementById('fb-helpful');
+    const notHelpBtn = document.getElementById('fb-not-helpful');
+    const changeBtn  = document.getElementById('feedback-change-btn');
+    if (helpBtn)    helpBtn.addEventListener('click',    () => sendFeedback(emailId, respId, 'helpful'));
+    if (notHelpBtn) notHelpBtn.addEventListener('click', () => sendFeedback(emailId, respId, 'not_helpful'));
+    if (changeBtn)  changeBtn.addEventListener('click',  () => resetFeedback(emailId, respId));
+  }
+
+  async function sendFeedback(emailId, respId, feedback) {
+    const section = document.querySelector('.feedback-section');
+    if (!section) return;
+    section.innerHTML = '<label>💬 Feedback</label><p class="feedback-question">Enviando…</p>';
+    try {
+      const res = await fetch('/api/emails/' + emailId + '/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback, response_id: respId })
+      });
+      if (!res.ok) throw new Error();
+      const label = feedback === 'helpful' ? '👍 Útil' : '👎 Não útil';
+      section.innerHTML = `<label>💬 Feedback</label>
+        <div class="feedback-result">
+          Você avaliou: <strong>${label}</strong>
+          <button class="feedback-change" id="feedback-change-btn">Alterar</button>
+        </div>`;
+      document.getElementById('feedback-change-btn')
+        .addEventListener('click', () => resetFeedback(emailId, respId));
+    } catch {
+      section.innerHTML = `<label>💬 Feedback</label>
+        <p class="feedback-question" style="color:var(--red)">Erro ao enviar. Tente novamente.</p>
+        <div class="feedback-actions">
+          <button class="feedback-btn helpful" id="fb-helpful">👍 Útil</button>
+          <button class="feedback-btn not-helpful" id="fb-not-helpful">👎 Não útil</button>
+        </div>`;
+      attachFeedbackListeners(emailId, respId);
+    }
+  }
+
+  function resetFeedback(emailId, respId) {
+    const section = document.querySelector('.feedback-section');
+    if (!section) return;
+    section.innerHTML = `<label>💬 Feedback</label>
+      <p class="feedback-question">A resposta sugerida foi útil?</p>
+      <div class="feedback-actions">
+        <button class="feedback-btn helpful" id="fb-helpful">👍 Útil</button>
+        <button class="feedback-btn not-helpful" id="fb-not-helpful">👎 Não útil</button>
+      </div>`;
+    attachFeedbackListeners(emailId, respId);
   }
 
   function closeDetail() {
