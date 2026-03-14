@@ -1,181 +1,284 @@
-# Contexto do Desafio
-
----
-
-Estamos criando uma **solução digital para uma grande empresa** do setor financeiro que lida com um **alto volume de emails diariamente**. Esses emails podem ser mensagens solicitando um status atual sobre uma requisição em andamento, compartilhando algum arquivo ou até mesmo mensagens improdutivas, como desejo de feliz natal ou perguntas não relevantes. 
-
-Nosso **objetivo é automatizar a leitura e classificação desses emails** e sugerir classificações e respostas automáticas de acordo com o teor de cada email recebido, **liberando tempo da equipe** para que não seja mais necessário ter uma pessoa fazendo esse trabalho manualmente.
-
-## Objetivo do Desafio Simplificado
-
-Desenvolver uma aplicação web simples que utilize inteligência artificial para:
-
-1. **Classificar** emails em categorias predefinidas.
-2. **Sugerir respostas automáticas** baseadas na classificação realizada.
-
-**Categorias de Classificação**
-
-- **Produtivo:** Emails que requerem uma ação ou resposta específica (ex.: solicitações de suporte técnico, atualização sobre casos em aberto, dúvidas sobre o sistema).
-- **Improdutivo:** Emails que não necessitam de uma ação imediata (ex.: mensagens de felicitações, agradecimentos).
-
-## Requisitos do Projeto
-
-**1. Interface Web (HTML)**
-
-**Formulário de Upload:**
-
-- Permitir o upload de arquivos de email em formatos .txt ou .pdf ou a inserção direta de texto de emails.
-- Botão para enviar o documento/email para processamento.
-
-**Exibição dos Resultados:**
-
-- Mostrar a categoria atribuída ao email (Produtivo ou Improdutivo).
-- Exibir a resposta automática sugerida pelo sistema.
-
-*Pro-tip:* a interface é uma ótima oportunidade para você se destacar, trazendo elementos visuais bem pensados, funcionalidades úteis, recursos mais avançados e uma experiência que realmente encante o usuário final.
-
-**2. Backend em Python**
-
-**Leitura e Processamento:**
-
-- Desenvolver um script em Python que leia o conteúdo dos emails enviados.
-- Utilizar técnicas de processamento de linguagem natural (NLP) para pré-processar o texto (remoção de stop words, stemming/lemmatização, etc.).
-
-**Classificação e Resposta:**
-
-- Implementar um algoritmo de classificação que categorize o conteúdo em **Produtivo** ou **Improdutivo**.
-- Utilizar uma API de AI (como Hugging Face Transformers, OpenAI GPT, ou outra de sua preferência) para:
-
-**Classificação:**
-
-- Determinar a categoria do email.
-
-**Geração de Resposta:**
-
-- Sugerir uma resposta automática adequada à categoria identificada.
-
-**Integração com a Interface Web:**
-
-- Conectar o backend com a interface HTML para receber entradas e exibir resultados.
-
-**3. Hospedagem na Nuvem**
-
-**Deploy da Aplicação:**
-
-- Hospedar a aplicação web em uma plataforma de nuvem gratuita (como Heroku, Vercel, AWS Free Tier, Google Cloud Platform, etc.) e disponibilizar um link online e funcional para que o time da AutoU ou usuários externos possam acessar e testar o funcionamento da solução.
-- Fornecer o link para a aplicação hospedada junto com a submissão do desafio.
-
----
-
-## Entregáveis
-
-**1. Código Fonte:**
-
-Forneça o **link público** para o repositório (GitHub) contendo:
-
-- Scripts em Python (.py, .ipynb)
-- Arquivo(s) HTML ou outros arquivos da interface
-- Arquivo requirements.txt (ou similar)
-- Dados de exemplo (caso necessário)
-- Arquivo README no repositório com instruções claras de como executar sua aplicação localmente e outras informações úteis (se aplicável)
-- Qualquer outro material relevante para entender e rodar o projeto
-
-> *Obs*: Organize o repositório com atenção à estrutura e à clareza de leitura.
-> 
-
-**2. Vídeo Demonstrativo:**
-
-Grave um vídeo de **3 a 5 minutos** apresentando sua solução e envie o link (YouTube com acesso liberado).
-
-**Conteúdo do Vídeo:**
-
-- **Introdução (30 segundos):** Apresentação pessoal e breve descrição do desafio.
-- **Demonstração (3 minutos):** Mostrar a interface web, realizar o upload de um email, e exibir a classificação e a resposta sugerida.
-    - **Explicação Técnica (1 minuto):** Descrever brevemente como o algoritmo funciona, as tecnologias usadas, o processo de treinamento da AI e as principais decisões técnicas.
-- **Conclusão (30 segundos):** Resumir o que foi feito e destacar pontos de aprendizado.
-
-> *Obs*: Garanta que seu vídeo está publicado e com acesso liberado para que qualquer um com o link possa assistir.
-> 
-
-**3. Link da Solução Deployada na Nuvem**
-
-Forneça um **link funcional** para que possamos acessar e testar sua aplicação diretamente em um **ambiente online** (por exemplo: Vercel, Render, Hugging Face Spaces, Replit, Heroku, GCP, Azure, AWS, etc).
-
-A aplicação deve estar pronta para uso, sem necessidade de instalação local. Caso haja autenticação ou instruções específicas para uso, inclua essa orientação na tela inicial ou no próprio README enviado no Github.
-
-A interface deve ser simples, intuitiva e com uma navegação amigável, mesmo para usuários não técnicos. Recomendamos que o foco esteja em:
-
-- **Facilidade de uso** (sem dependência de instruções externas);
-- **Clareza na experiência** (mostrar o propósito da aplicação de forma direta);
-- **Organização visual** (sem excesso de elementos ou distrações desnecessárias).
-
-Caso opte por não hospedar a aplicação, justifique brevemente o motivo no campo de entrega, e certifique-se de que o repositório contenha todos os arquivos necessários para rodar localmente, com instruções claras.
-
----
-
-**Critérios de Avaliação**
-
-**1. Funcionalidade e experiência do usuário:**
-
-- A aplicação realiza a classificação correta dos emails nas categorias **Produtivo** e **Improdutivo**.
-- A resposta sugerida é relevante e adequada para a categoria identificada.
-- A experiência do usuário com a plataforma é fluída e intuitiva.
-
-**2. Qualidade Técnica:**
-
-- Código limpo, organizado e bem documentado.
-- Uso eficaz das bibliotecas e APIs de AI.
-
-**3. Uso de AI:**
-
-- Integração correta e eficaz das APIs de NLP para classificação e geração de respostas.
-- Demonstração de treinamento ou ajuste da AI para melhorar a qualidade das respostas.
-
-**4. Hospedagem na Nuvem:**
-
-- A aplicação está hospedada e acessível via uma URL fornecida.
-
-- Funcionamento consistente e sem erros na aplicação hospedada.
-
-**5. Interface Web (HTML):**
-
-- Interface funcional e intuitiva para upload de arquivos e exibição de resultados.
-- (Extra) Capricho visual ou recursos adicionais que melhorem a usabilidade.
-
-6. **Autonomia e Resolução de Problemas:**
-
-- Capacidade de resolver problemas técnicos de forma independente.
-- Proatividade na busca de soluções e implementação eficiente.
-
-7. **Demonstração e Comunicação:**
-
-- Clareza e concisão na apresentação do vídeo.
-- Capacidade de explicar o funcionamento do algoritmo, o processo de treinamento da AI e as escolhas técnicas de forma compreensível.
-
----
-
-## Instruções de Entrega
-
-**A entrega deve ser feita exclusivamente através do formulário:** https://airtable.com/appSpmPaaJ41PwbiU/pageVZHk7NuMhfR9J/form**.**
-
-No formulário, você irá colar os seguintes links:
-
-- Link público do repositório no GitHub com o código-fonte do projeto e outras informações úteis.
-- Link público do vídeo de apresentação rápida do projeto (ex: YouTube).
-- Link da aplicação publicada (ex: Render, Hugging Face Spaces, Replit, Heroku, GCP, AWS, Azure ou similar).
-
-1. Certifique-se de que todos os **links estejam acessíveis publicamente** e que não exijam permissões especiais.
-2. O **envio deve ser feito até a data limite informada no e-mail** de confirmação. Envios após o prazo não serão considerados.
-3. O envio do case deve ser feito **exclusivamente pelo formulário** acima. **Não serão aceitos arquivos ou links enviados por e-mail, WhatsApp ou qualquer outro canal.** Toda a análise será feita apenas com base nas informações preenchidas no formulário.
-
----
-
-## Considerações finais
-
-**Minha principal dica para você é:**
-
-Enxergar este case como uma grande oportunidade de aplicar seus conhecimentos na criação de algo prático e se desenvolver profissionalmente. Nós forneceremos feedbacks sobre os cases, o que será uma excelente forma de você evoluir na sua carreira.
-
-Foque em realmente entender o desafio, o contexto do problema e em criar uma solução digital que resolva e melhore a vida do usuário. Não existe resposta certa ou errada, nem gabarito. 
-
-**Capriche bastante na sua solução, estamos ansiosos para ver o que você irá criar, boa sorte!** 🚀
+# Email Classification Backend API
+
+## Overview
+
+A Python Flask REST API that classifies emails as **Produtivo** (productive) or **Improdutivo** (unproductive) and generates AI-powered contextual responses in Portuguese.
+
+**Two AI models work together:**
+- **Classification (local):** `facebook/bart-large-mnli` — zero-shot classification running inside Docker via Hugging Face Transformers.
+- **Response generation (remote):** `Qwen/Qwen2.5-72B-Instruct` — called via the free Hugging Face Inference API.
+
+## Technologies
+
+- **Framework**: Flask 2.3.3
+- **ORM**: SQLAlchemy 2.0
+- **Database**: MySQL 8.0
+- **NLP**: NLTK 3.8
+- **Classification AI**: Hugging Face Transformers (`facebook/bart-large-mnli`, local)
+- **Response AI**: Hugging Face Inference API (`Qwen/Qwen2.5-72B-Instruct`, remote)
+- **Python**: 3.11
+
+## Project Structure
+
+```
+python-project/
+├── src/
+│   ├── __init__.py
+│   ├── app.py                         # Flask app factory
+│   ├── init_db.py                     # Database initialization
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── database.py                # SQLAlchemy ORM models
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── nlp_service.py             # NLTK text preprocessing
+│   │   ├── classification_service.py  # Local AI classification
+│   │   └── response_service.py        # Remote AI response generation
+│   └── routes/
+│       ├── __init__.py
+│       └── email_routes.py            # API endpoints
+├── templates/                         # (Future frontend)
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── .env.example
+├── init.sql
+└── readme.md
+```
+
+## Installation & Setup
+
+### Option 1: Docker Compose (Recommended)
+
+```bash
+# 1. Clone the repository
+cd python-project
+
+# 2. Create .env file
+cp .env.example .env
+
+# 3. Add your HF API token to .env
+#    Get a free token at https://huggingface.co/settings/tokens
+#    Edit .env and set: HUGGINGFACE_API_TOKEN=hf_your_token_here
+
+# 4. Start the services
+docker compose up -d
+
+# 5. Check logs
+docker compose logs -f app
+
+# 6. API available at http://localhost:5000
+```
+
+### Option 2: Local Development
+
+```bash
+# 1. Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Download NLTK data
+python -m nltk.downloader punkt stopwords wordnet omw-1.4
+
+# 4. Set up environment variables
+cp .env.example .env
+# Edit .env with your MySQL connection details and HF API token
+
+# 5. Run the application
+flask run
+```
+
+## API Endpoints
+
+### 1. Process Email (Classify & Generate Response)
+
+**POST** `/api/emails/processar`
+
+```json
+// Request
+{
+  "assunto": "Erro no módulo de pagamentos",
+  "conteudo": "Prezados, o módulo de pagamentos apresentou erro crítico hoje pela manhã. Precisamos de suporte urgente para resolver."
+}
+
+// Response (201)
+{
+  "email_id": "550e8400-e29b-41d4-a716-446655440000",
+  "assunto": "Erro no módulo de pagamentos",
+  "conteudo_processado": "erro módulo pagamento ...",
+  "classificacao": {
+    "categoria": "Produtivo",
+    "confianca": 0.92,
+    "scores": {
+      "Produtivo": 0.92,
+      "Improdutivo": 0.08
+    },
+    "modelo_usado": "facebook/bart-large-mnli"
+  },
+  "resposta_sugerida": {
+    "texto": "Prezado(a),\n\nAgradecemos por nos informar sobre o erro no módulo de pagamentos...",
+    "tipo": "ai_generated",
+    "modelo_usado": "Qwen/Qwen2.5-72B-Instruct",
+    "nivel_personalizacao": "high"
+  },
+  "timestamp": "2024-03-12T10:30:00"
+}
+```
+
+### 2. List All Processed Emails
+
+**GET** `/api/emails?page=1&per_page=10&categoria=Produtivo`
+
+### 3. Get Email Details
+
+**GET** `/api/emails/<email_id>`
+
+### 4. Send Feedback
+
+**POST** `/api/emails/<email_id>/feedback`
+
+```json
+{
+  "feedback": "helpful",
+  "response_id": "550e8400-e29b-41d4-a716-446655440001"
+}
+```
+
+Feedback values: `helpful`, `not_helpful`
+
+### 5. Health Check
+
+**GET** `/health`
+
+### 6. API Information
+
+**GET** `/`
+
+## Usage Examples
+
+### Classify a Productive Email
+
+```bash
+curl -X POST http://localhost:5000/api/emails/processar \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assunto": "Erro crítico no sistema",
+    "conteudo": "Identificamos um problema crítico no módulo de processamento de pagamentos. Favor implementar o hotfix imediatamente."
+  }'
+```
+
+### Classify an Unproductive Email
+
+```bash
+curl -X POST http://localhost:5000/api/emails/processar \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assunto": "Boas Festas!",
+    "conteudo": "Desejamos a você e sua família um maravilhoso final de ano. Aguardamos você em 2025!"
+  }'
+```
+
+### List Productive Emails
+
+```bash
+curl http://localhost:5000/api/emails?categoria=Produtivo&per_page=20
+```
+
+## Environment Variables
+
+Create a `.env` file based on `.env.example`:
+
+```env
+FLASK_APP=src/app.py
+FLASK_ENV=development
+FLASK_DEBUG=1
+
+MYSQL_HOST=db
+MYSQL_PORT=3306
+MYSQL_USER=email_user
+MYSQL_PASSWORD=email_password
+MYSQL_DATABASE=email_classification
+
+SQLALCHEMY_DATABASE_URI=mysql+pymysql://email_user:email_password@db:3306/email_classification
+
+# AI Models
+HUGGINGFACE_MODEL_CLASSIFICATION=facebook/bart-large-mnli
+HUGGINGFACE_MODEL_RESPONSE=Qwen/Qwen2.5-72B-Instruct
+
+# Free API token — get yours at https://huggingface.co/settings/tokens
+HUGGINGFACE_API_TOKEN=hf_your_token_here
+
+LANGUAGE=pt
+API_HOST=0.0.0.0
+API_PORT=5000
+```
+
+## Database Schema
+
+### emails
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(36) | UUID primary key |
+| subject | VARCHAR(255) | Email subject |
+| content | LONGTEXT | Email body |
+| sender | VARCHAR(255) | Sender |
+| received_date | DATETIME | When received |
+| created_at | DATETIME | Record creation |
+
+### classifications
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(36) | UUID primary key |
+| email_id | VARCHAR(36) | FK → emails |
+| category | VARCHAR(50) | Produtivo / Improdutivo |
+| confidence | FLOAT | 0.0–1.0 |
+| model_used | VARCHAR(255) | e.g. facebook/bart-large-mnli |
+
+### suggested_responses
+| Column | Type | Description |
+|--------|------|-------------|
+| id | VARCHAR(36) | UUID primary key |
+| email_id | VARCHAR(36) | FK → emails |
+| category | VARCHAR(50) | Category that triggered the response |
+| response_text | LONGTEXT | Generated response |
+| model_used | VARCHAR(255) | e.g. Qwen/Qwen2.5-72B-Instruct |
+| user_feedback | VARCHAR(50) | helpful / not_helpful |
+
+## Troubleshooting
+
+### Model loading is slow on first request
+The BART classification model (~1.6 GB) downloads on first API call. Subsequent requests are fast (150-300ms).
+
+### Response generation returns template instead of AI
+Check that `HUGGINGFACE_API_TOKEN` is set in `.env`. Get a free token at https://huggingface.co/settings/tokens.
+
+### Port already in use
+```bash
+# Change port in docker-compose.yml
+ports:
+  - "5001:5000"
+```
+
+### Database connection error
+```bash
+docker compose ps          # Check containers are running
+docker compose logs db     # Check MySQL logs
+```
+
+## Testing
+
+```bash
+# Health check
+curl http://localhost:5000/health
+
+# Process an email
+curl -X POST http://localhost:5000/api/emails/processar \
+  -H "Content-Type: application/json" \
+  -d '{"assunto": "Teste", "conteudo": "Precisamos de suporte para o sistema de pagamentos."}'
+
+# Run integration tests
+python test_api.py
+```
