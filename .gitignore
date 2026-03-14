@@ -36,3 +36,5 @@ instance/
 .coverage
 htmlcov/
 mysql_data/
+*.db
+data/

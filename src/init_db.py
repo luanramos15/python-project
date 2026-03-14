@@ -104,6 +104,23 @@ def initialize_database():
 
 
 if __name__ == '__main__':
+    use_sqlite = os.getenv('USE_SQLITE', '').lower() in ('1', 'true', 'yes')
+
+    if use_sqlite:
+        logger.info("=" * 60)
+        logger.info("Database Initialization Script (SQLite mode)")
+        logger.info("=" * 60)
+        logger.info("Skipping MySQL wait — using SQLite")
+        logger.info("\nInitializing database via SQLAlchemy...")
+        if not initialize_database():
+            logger.error("Database initialization failed. Exiting.")
+            sys.exit(1)
+        logger.info("\n" + "=" * 60)
+        logger.info("✓ SQLite database ready!")
+        logger.info("=" * 60)
+        sys.exit(0)
+
+    # MySQL mode
     # Get database configuration from environment variables
     db_host = os.getenv('MYSQL_HOST', 'db')
     db_port = int(os.getenv('MYSQL_PORT', 3306))

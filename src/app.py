@@ -18,6 +18,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _get_database_uri():
+    """Determine the database URI: use MySQL if configured, else SQLite."""
+    uri = os.getenv('SQLALCHEMY_DATABASE_URI', '')
+    if uri:
+        return uri
+    # If USE_SQLITE is set (e.g. on HF Spaces), use a local SQLite file
+    if os.getenv('USE_SQLITE', '').lower() in ('1', 'true', 'yes'):
+        data_dir = os.getenv('SQLITE_DIR', '/tmp')
+        os.makedirs(data_dir, exist_ok=True)
+        return f"sqlite:///{os.path.join(data_dir, 'email_classification.db')}"
+    # Default: MySQL
+    return 'mysql+pymysql://root:seu_password_seguro@localhost:3306/email_classification'
+
+
 def create_app():
     """
     Application factory function to create and configure the Flask app.
@@ -30,10 +44,7 @@ def create_app():
                 template_folder=os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates'))
     
     # Configuration
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-        'SQLALCHEMY_DATABASE_URI',
-        'mysql+pymysql://root:seu_password_seguro@localhost:3306/email_classification'
-    )
+    app.config['SQLALCHEMY_DATABASE_URI'] = _get_database_uri()
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JSON_SORT_KEYS'] = False
     app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5 MB upload limit
@@ -54,10 +65,12 @@ def create_app():
         try:
             # Test database connection
             db.session.execute(text('SELECT 1'))
+            db_type = 'sqlite' if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI'] else 'mysql'
             return jsonify({
                 'status': 'healthy',
                 'message': 'Application is running',
-                'database': 'connected'
+                'database': 'connected',
+                'db_engine': db_type
             }), 200
         except Exception as e:
             logger.error(f"Health check failed: {e}")

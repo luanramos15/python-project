@@ -35,12 +35,12 @@ class NLPService:
     Handles tokenization, stop word removal, and lemmatization.
     """
 
-    def __init__(self, language='english'):
+    def __init__(self, language='portuguese'):
         """
         Initialize the NLP service.
         
         Args:
-            language: Language for stopwords (default: 'english')
+            language: Language for stopwords (default: 'portuguese')
         """
         self.language = language
         self.lemmatizer = WordNetLemmatizer()
@@ -130,5 +130,5 @@ class NLPService:
         }
 
 
-# Create a singleton instance
-nlp_service = NLPService()
+# Create a singleton instance (Portuguese for BR email processing)
+nlp_service = NLPService(language='portuguese')

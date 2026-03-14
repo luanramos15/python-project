@@ -1,0 +1,40 @@
+FROM python:3.11-slim
+
+# HF Spaces runs as uid 1000
+RUN useradd -m -u 1000 user
+WORKDIR /app
+
+# System deps (no MySQL client needed)
+RUN apt-get update && apt-get install -y \
+    gcc build-essential rustc cargo \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+# Install Python deps — skip PyMySQL/mysql-connector (not needed for SQLite)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Data directory for SQLite (writable by user 1000)
+RUN mkdir -p /app/data && chown -R user:user /app
+
+# Switch to non-root
+USER user
+
+# Environment
+ENV FLASK_APP=src/app.py \
+    PYTHONUNBUFFERED=1 \
+    USE_SQLITE=true \
+    SQLITE_DIR=/app/data \
+    PORT=7860
+
+EXPOSE 7860
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD python -c "import requests; requests.get('http://0.0.0.0:7860/health')"
+
+# Init DB then start server
+CMD sh -c "python -m src.init_db && \
+    gunicorn --bind 0.0.0.0:7860 --timeout 300 --workers 1 src.app:app"
