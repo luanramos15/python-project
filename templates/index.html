@@ -665,6 +665,7 @@
       if (!response.ok) { showError(data.error || 'Erro ao processar email.'); return; }
       showResult(data);
       loadHistory();
+      loadStats();
     } catch (err) {
       showError('Não foi possível conectar ao servidor.');
     } finally {
