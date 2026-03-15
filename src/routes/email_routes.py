@@ -28,7 +28,7 @@ def processar_email():
         dict: Processed email with classification and suggested response
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data:
             return jsonify({'error': 'No JSON data provided'}), 400
