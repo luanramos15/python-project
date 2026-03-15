@@ -145,7 +145,9 @@ def listar_emails():
         
         if categoria:
             query = query.join(Classification).filter(Classification.category == categoria)
-        
+
+        query = query.order_by(Email.created_at.desc())
+
         # Paginate
         paginated = query.paginate(page=page, per_page=per_page, error_out=False)
         
